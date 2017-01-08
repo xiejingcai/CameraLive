@@ -1,0 +1,58 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@drawable/btn_play_stop"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.example.cameralive.MainActivity" >
+
+    <FrameLayout
+        android:id="@+id/PlayerPreview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+    </FrameLayout>
+     
+    <FrameLayout
+        android:id="@+id/CameraPreview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+    </FrameLayout>
+    
+    <EditText
+    	android:id="@+id/URL"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" 
+        android:layout_alignParentTop="true">
+    	<requestFocus />
+    </EditText>
+    
+    <ImageView
+        android:id="@+id/streambtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:background="#00000000"
+        android:onClick="StreamCmd"
+        android:src="@drawable/btn_stream_stop" />
+
+    <ImageView
+        android:id="@+id/recordbtn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:background="#00000000"
+        android:onClick="RecordCmd"
+        android:src="@drawable/btn_record_stop" />
+    
+   	<ImageView
+   	    android:id="@+id/playbtn"
+   	    android:layout_width="wrap_content"
+   	    android:layout_height="wrap_content"
+   	    android:layout_alignParentBottom="true"
+   	    android:layout_centerHorizontal="true"
+   	    android:background="#00000000"
+   	    android:onClick="PlayCmd"
+   	    android:src="@drawable/btn_play_stop" />
+
+</RelativeLayout>
