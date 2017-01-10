@@ -185,7 +185,7 @@ public class PlayerPreview extends SurfaceView implements SurfaceHolder.Callback
 								
 								inIndex = decoder.dequeueInputBuffer(10000);
 								if (inIndex >= 0) {
-									buffer = inputBuffers[inIndex];
+									buffer = inputBuffers[inIndex];									
 									buffer.put(pps);
 									decoder.queueInputBuffer(inIndex, 0,
 											pps.length, pTS,

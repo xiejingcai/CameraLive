@@ -40,7 +40,7 @@ public class AudioLive {
 	private int min_buffer_size = 0;
 	
 	private static final int SAMPLE_RATE = 44100;	// 44.1[KHz] is only setting guaranteed to be available on all devices.
-    private static final int BIT_RATE = 64000;
+	private static final int BIT_RATE = 64000;
 	public static final int SAMPLES_PER_FRAME = 1024;	// AAC, bytes/frame/channel
 	public static final int FRAMES_PER_BUFFER = 25; 	// AAC, frame/buffer/sec
 	
