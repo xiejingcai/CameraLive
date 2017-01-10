@@ -73,16 +73,18 @@ public class AudioLive {
 			try {
 				encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			encoder.configure(mMF, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE);
 			encoder.start();
 			info = new MediaCodec.BufferInfo();			
 		} else {
-			buffer_size = AudioTrack
+			min_buffer_size = AudioTrack
 					.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO,
 							AudioFormat.ENCODING_PCM_16BIT);
+			if (buffer_size < min_buffer_size)
+				buffer_size = ((min_buffer_size / SAMPLES_PER_FRAME) + 1) * SAMPLES_PER_FRAME * 2;
+			
 			mAT = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE,
 					AudioFormat.CHANNEL_OUT_STEREO,
 					AudioFormat.ENCODING_PCM_16BIT, buffer_size,
@@ -90,13 +92,13 @@ public class AudioLive {
 			mAT.play();
 			
 			mMF = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC,
-					SAMPLE_RATE, 1);
-			mMF.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
+					SAMPLE_RATE, 2);
+			mMF.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 2);
 			mMF.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
 			mMF.setInteger(MediaFormat.KEY_AAC_PROFILE,
 					MediaCodecInfo.CodecProfileLevel.AACObjectLC);
 			mMF.setInteger(MediaFormat.KEY_CHANNEL_MASK,
-					AudioFormat.CHANNEL_IN_MONO);
+					AudioFormat.CHANNEL_OUT_STEREO);
 			mMF.setInteger(MediaFormat.KEY_IS_ADTS,1);
 			
 			try {
@@ -125,47 +127,64 @@ public class AudioLive {
 					if (mode == 0) {
 						Encode_Push(buf);
 					}else{
-						//Decode_Rend(buf);
+						Decode_Rend(buf);
 					}
 				}
 			}
 		});
 		mThread.start();
 	}
-
+	private void addADTStoPacket(byte[] packet, int packetLen) {  
+        int profile = 2;  //AAC LC  
+        int freqIdx = 4;  //44.1KHz  
+        int chanCfg = 2;  //CPE  
+        packet[0] = (byte)0xFF;  
+        packet[1] = (byte)0xF9;  
+        packet[2] = (byte)(((profile-1)<<6) + (freqIdx<<2) +(chanCfg>>2));  
+        packet[3] = (byte)(((chanCfg&3)<<6) + (packetLen>>11));  
+        packet[4] = (byte)((packetLen&0x7FF) >> 3);  
+        packet[5] = (byte)(((packetLen&7)<<5) + 0x1F);  
+        packet[6] = (byte)0xFC;  
+    } 
+	
 	protected void Decode_Rend(ByteBuffer buf) {
 		buf.clear();
 		BufferUnit sample = queue.poll();
 		if (sample != null) {
 			if (sample.buffer[1] == 0){
-				System.arraycopy(sample.buffer, 4,adtsHeader , 0, 7);	
+				decoder.stop();	
 				byte[] aacconfig = new byte[2];
 				aacconfig[0] = sample.buffer[2];
-				aacconfig[0] = sample.buffer[3];
-				buf.clear();
-				buf.put(aacconfig);
-				mMF.setByteBuffer("csd-0",buf);
+				aacconfig[1] = sample.buffer[3];
+				//Log.e("AudioLive", "conf ..."+aacconfig[0]+aacconfig[1]);
+				ByteBuffer conf = ByteBuffer.wrap(aacconfig); 
+				mMF.setByteBuffer("csd-0",conf);
 				decoder.configure(mMF, null, null, 0);
 				decoder.start();
 				return ;
 			}
-			int inIndex = decoder.dequeueInputBuffer(10000);
+			int inIndex = decoder.dequeueInputBuffer(-1);
 			if (inIndex >= 0) {
-				Log.e("AudioLive", "raw ...");
+				//Log.e("AudioLive", "raw ... size="+sample.buffer.length);
 				ByteBuffer buffer = decoder.getInputBuffer(inIndex);
 				buffer.clear();
+				
 				byte[] aacbuffer = new byte[7+sample.buffer.length-2];
-				System.arraycopy(adtsHeader,0,aacbuffer,0,7);
+				addADTStoPacket(aacbuffer,aacbuffer.length);
 				System.arraycopy(sample.buffer,2,aacbuffer,7,sample.buffer.length-2);
 				buffer.put(aacbuffer);						
-				decoder.queueInputBuffer(inIndex, 0, sample.buffer.length - 2 + 7, sample.pts, 0);
+				decoder.queueInputBuffer(inIndex, 0, sample.buffer.length - 2 + 7, sample.pts, 0);				
 			}
 			
 			int outIndex = decoder.dequeueOutputBuffer(info, 10000);
 			if(outIndex>=0){
-				Log.e("AudioLive", "pcm ...");
+				//Log.e("AudioLive", "pcm ... size="+info.size);
 				ByteBuffer pcmbuffer = decoder.getOutputBuffer(outIndex);
-				mAT.write(pcmbuffer, info.size,AudioTrack.WRITE_NON_BLOCKING);
+				byte[] mPcmData=new byte[info.size]; 
+				pcmbuffer.get(mPcmData,0,info.size); 
+				mAT.write(mPcmData, 0, info.size);
+
+				pcmbuffer.clear();
 				decoder.releaseOutputBuffer(outIndex, false);
 			}
 		}

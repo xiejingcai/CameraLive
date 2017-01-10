@@ -72,7 +72,7 @@ public class MainActivity extends Activity implements RtmpHandler.RtmpListener{
 	public static int mResolutionY = 720;
 	public static int mFps = 15;
 	public int mOrientation = 90;
-	public static String dsturl = "rtmp://192.168.1.107:1935/rtmp/live";
+	public static String dsturl = "rtmp://192.168.1.108:1935/rtmp/live";
 	public static int YUVQ_num = 5;
 	public static int AVCQ_num = 30;
 	public static int AACQ_num = 20;
