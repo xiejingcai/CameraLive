@@ -68,7 +68,7 @@ public class AudioLive {
 			mMF.setInteger(MediaFormat.KEY_AAC_PROFILE,
 					MediaCodecInfo.CodecProfileLevel.AACObjectLC);
 			mMF.setInteger(MediaFormat.KEY_CHANNEL_MASK,
-					AudioFormat.CHANNEL_IN_STEREO);
+					AudioFormat.CHANNEL_IN_MONO);
 			try {
 				encoder = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
 			} catch (IOException e) {
@@ -79,25 +79,25 @@ public class AudioLive {
 			info = new MediaCodec.BufferInfo();			
 		} else {
 			min_buffer_size = AudioTrack
-					.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO,
+					.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO,
 							AudioFormat.ENCODING_PCM_16BIT);
 			if (buffer_size < min_buffer_size)
 				buffer_size = ((min_buffer_size / SAMPLES_PER_FRAME) + 1) * SAMPLES_PER_FRAME * 2;
 			
 			mAT = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE,
-					AudioFormat.CHANNEL_OUT_STEREO,
+					AudioFormat.CHANNEL_OUT_MONO,
 					AudioFormat.ENCODING_PCM_16BIT, buffer_size,
 					AudioTrack.MODE_STREAM);
 			mAT.play();
 			
 			mMF = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC,
-					SAMPLE_RATE, 2);
-			mMF.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 2);
+					SAMPLE_RATE, 1);
+			mMF.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
 			mMF.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
 			mMF.setInteger(MediaFormat.KEY_AAC_PROFILE,
 					MediaCodecInfo.CodecProfileLevel.AACObjectLC);
 			mMF.setInteger(MediaFormat.KEY_CHANNEL_MASK,
-					AudioFormat.CHANNEL_OUT_STEREO);
+					AudioFormat.CHANNEL_OUT_MONO);
 			mMF.setInteger(MediaFormat.KEY_IS_ADTS,1);
 			
 			try {
