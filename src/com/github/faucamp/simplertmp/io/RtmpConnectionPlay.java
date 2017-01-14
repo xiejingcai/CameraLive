@@ -179,7 +179,8 @@ public class RtmpConnectionPlay implements RtmpClient, PacketRxHandler, ThreadCo
     @Override
     public void closeStream() throws IllegalStateException {
         if (!fullyConnected) {
-            throw new IllegalStateException("Not connected to RTMP server");
+        	return ;
+            //throw new IllegalStateException("Not connected to RTMP server");
         }
         if (currentStreamId == -1) {
             throw new IllegalStateException("No current stream object exists");

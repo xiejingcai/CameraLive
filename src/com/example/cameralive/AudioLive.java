@@ -45,10 +45,12 @@ public class AudioLive {
 	public static final int FRAMES_PER_BUFFER = 25; 	// AAC, frame/buffer/sec
 	
 	private boolean isNeedExit = false;
+	private int decoderstate = 0;
 	
 	public AudioLive(int m, ArrayBlockingQueue<BufferUnit> bq){
 		mode = m;
 		queue = bq;
+		queue.clear();
 		if (mode == 0) {
 			min_buffer_size = AudioRecord.getMinBufferSize(SAMPLE_RATE,
 					AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
@@ -78,6 +80,11 @@ public class AudioLive {
 			encoder.start();
 			info = new MediaCodec.BufferInfo();			
 		} else {
+			info = new MediaCodec.BufferInfo();
+		}
+	}
+	public void SetAudioMode(int flag){
+		if(flag == 1){
 			min_buffer_size = AudioTrack
 					.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_MONO,
 							AudioFormat.ENCODING_PCM_16BIT);
@@ -88,27 +95,38 @@ public class AudioLive {
 					AudioFormat.CHANNEL_OUT_MONO,
 					AudioFormat.ENCODING_PCM_16BIT, buffer_size,
 					AudioTrack.MODE_STREAM);
-			mAT.play();
 			
 			mMF = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC,
 					SAMPLE_RATE, 1);
-			mMF.setInteger(MediaFormat.KEY_CHANNEL_COUNT, 1);
-			mMF.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
-			mMF.setInteger(MediaFormat.KEY_AAC_PROFILE,
-					MediaCodecInfo.CodecProfileLevel.AACObjectLC);
 			mMF.setInteger(MediaFormat.KEY_CHANNEL_MASK,
 					AudioFormat.CHANNEL_OUT_MONO);
-			mMF.setInteger(MediaFormat.KEY_IS_ADTS,1);
+						
+		}else if(flag==2){
+			min_buffer_size = AudioTrack
+					.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO,
+							AudioFormat.ENCODING_PCM_16BIT);
+			if (buffer_size < min_buffer_size)
+				buffer_size = ((min_buffer_size / SAMPLES_PER_FRAME) + 1) * SAMPLES_PER_FRAME * 2;
 			
-			try {
-				decoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			mAT = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE,
+					AudioFormat.CHANNEL_OUT_STEREO,
+					AudioFormat.ENCODING_PCM_16BIT, buffer_size,
+					AudioTrack.MODE_STREAM);
 			
-			decoder.configure(mMF, null, null, 0);
-			decoder.start();
-			info = new MediaCodec.BufferInfo();
+			mMF = MediaFormat.createAudioFormat(MediaFormat.MIMETYPE_AUDIO_AAC,
+					SAMPLE_RATE, 2);
+			mMF.setInteger(MediaFormat.KEY_CHANNEL_MASK,
+					AudioFormat.CHANNEL_OUT_STEREO);
+		}
+		
+		mMF.setInteger(MediaFormat.KEY_IS_ADTS,1);
+		mMF.setInteger(MediaFormat.KEY_BIT_RATE, BIT_RATE);
+		mMF.setInteger(MediaFormat.KEY_AAC_PROFILE,
+				MediaCodecInfo.CodecProfileLevel.AACObjectLC);	
+		try {
+			decoder = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_AUDIO_AAC);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 	public MediaFormat getFormat(){
@@ -126,7 +144,7 @@ public class AudioLive {
 					if (mode == 0) {
 						Encode_Push(buf);
 					}else{
-						Decode_Rend(buf);
+						DecodeTrack(buf);
 					}
 				}
 			}
@@ -147,25 +165,37 @@ public class AudioLive {
 		packet[6] = (byte) 0xFC;
 	}
 	
-	protected void Decode_Rend(ByteBuffer buf) {
+	protected void DecodeTrack(ByteBuffer buf) {
 		buf.clear();
 		BufferUnit sample = queue.poll();
 		if (sample != null) {
 			if (sample.buffer[1] == 0){
-				decoder.stop();	
+				if(sample.buffer[0]==(byte)0xaf){
+					Log.e("DecodeTrack","audio mode : stereo");
+					SetAudioMode(2);
+				}else if(sample.buffer[0]==(byte)0xae){
+					Log.e("DecodeTrack","audio mode : mono");
+					SetAudioMode(1);
+				}
+				
 				byte[] aacconfig = new byte[2];
 				aacconfig[0] = sample.buffer[2];
 				aacconfig[1] = sample.buffer[3];
-				//Log.e("AudioLive", "conf ..."+aacconfig[0]+aacconfig[1]);
 				ByteBuffer conf = ByteBuffer.wrap(aacconfig); 
 				mMF.setByteBuffer("csd-0",conf);
+					
 				decoder.configure(mMF, null, null, 0);
-				decoder.start();
+				decoder.start();				
+				mAT.play();
+				
+				decoderstate = 1;
+				
 				return ;
 			}
+			if(decoderstate<=0)
+				return;
 			int inIndex = decoder.dequeueInputBuffer(-1);
 			if (inIndex >= 0) {
-				//Log.e("AudioLive", "raw ... size="+sample.buffer.length);
 				ByteBuffer buffer = decoder.getInputBuffer(inIndex);
 				buffer.clear();
 				
@@ -178,7 +208,6 @@ public class AudioLive {
 			
 			int outIndex = decoder.dequeueOutputBuffer(info, 10000);
 			if(outIndex>=0){
-				//Log.e("AudioLive", "pcm ... size="+info.size);
 				ByteBuffer pcmbuffer = decoder.getOutputBuffer(outIndex);
 				byte[] mPcmData=new byte[info.size]; 
 				pcmbuffer.get(mPcmData,0,info.size); 
@@ -215,6 +244,7 @@ public class AudioLive {
 		isNeedExit = true;
 		try {
 			mThread.join();
+			decoderstate = 0;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
