@@ -1,12 +1,7 @@
-# RTMP Live
-android rtmp client, stream push and play,mediacodec
+# CameraLive
+Android上rtmp推流-播放，纯java语言开发，硬件加速编码、解码。
 
-# mediacodec decode and encode
-video: yuv-->h.264
-
-audio: pcm-->aac-lc
-
-# reference
+# Reference
 https://github.com/faucamp/SimpleRtmp
 
 https://github.com/begeekmyfriend/yasea
